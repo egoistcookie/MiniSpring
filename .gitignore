@@ -12,3 +12,4 @@
 
 # 忽略依赖目录
 node_modules/
+target/
