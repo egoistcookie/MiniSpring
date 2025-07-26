@@ -1,0 +1,4 @@
+<beans>
+    <bean id="userService" class="com.example.UserService" />
+    <bean id="userRepository" class="com.example.UserRepository" />
+</beans>
