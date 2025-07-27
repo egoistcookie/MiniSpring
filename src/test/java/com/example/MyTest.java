@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.service.UserService;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class MyTest {

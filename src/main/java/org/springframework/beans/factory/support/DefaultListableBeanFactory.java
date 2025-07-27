@@ -1,5 +1,7 @@
 package org.springframework.beans.factory.support;
 
+import org.springframework.aop.framework.LoggingInterceptor;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.BeanDefinition;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -107,12 +109,45 @@ public class DefaultListableBeanFactory implements BeanFactory {
      */
     private Object createBean(BeanDefinition beanDefinition) {
         try {
-            // 通过反射创建Bean实例
-            Object bean = beanDefinition.getBeanClass().newInstance();
-            return initializeBean(bean, beanDefinition.getBeanClass().getSimpleName());
+            Class<?> beanClass = beanDefinition.getBeanClass();
+            Object bean;
+
+            // 检查是否为接口或抽象类
+            if (beanClass.isInterface() || java.lang.reflect.Modifier.isAbstract(beanClass.getModifiers())) {
+                // 尝试从已注册的bean中查找实现该接口的bean
+                bean = findImplementationForType(beanClass);
+                if (bean == null) {
+                    throw new RuntimeException("Cannot instantiate interface or abstract class: " + beanClass.getName() +
+                            ". No implementation found.");
+                }
+            } else {
+                // 通过反射创建Bean实例
+                bean = beanClass.newInstance();
+            }
+            return initializeBean(bean, beanClass.getSimpleName());
         } catch (Exception e) {
             throw new RuntimeException("Failed to create bean", e);
         }
+    }
+    /**
+     * 查找指定类型的实现bean
+     *
+     * @param type 接口或抽象类类型
+     * @return 实现该类型的bean实例，如果找不到则返回null
+     */
+    private Object findImplementationForType(Class<?> type) {
+        // 遍历所有已注册的bean定义
+        for (Map.Entry<String, BeanDefinition> entry : beanDefinitionMap.entrySet()) {
+            Class<?> beanClass = entry.getValue().getBeanClass();
+            // 检查该bean是否实现了指定的接口且不是接口或抽象类本身
+            if (type.isAssignableFrom(beanClass) &&
+                    !beanClass.isInterface() &&
+                    !java.lang.reflect.Modifier.isAbstract(beanClass.getModifiers())) {
+                // 返回该bean的实例
+                return getBean(entry.getKey());
+            }
+        }
+        return null;
     }
 
     /**
@@ -127,7 +162,23 @@ public class DefaultListableBeanFactory implements BeanFactory {
         for (BeanPostProcessor processor : beanPostProcessors) {
             bean = processor.postProcessBeforeInitialization(bean, beanName);
         }
+        // 检查是否有 AOP 配置
+        if (shouldApplyProxy(bean)) {
+            return createProxy(bean);
+        }
         return bean;
+    }
+
+    private boolean shouldApplyProxy(Object bean) {
+        // 只对实现了接口的类应用JDK动态代理
+        return bean.getClass().getInterfaces().length > 0;
+    }
+
+    private Object createProxy(Object target) {
+        ProxyFactory proxyFactory = new ProxyFactory();
+        proxyFactory.setTarget(target);
+        proxyFactory.setMethodInterceptor(new LoggingInterceptor());
+        return proxyFactory.getProxy();
     }
 
 }
