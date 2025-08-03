@@ -1,4 +1,42 @@
-<beans>
-    <bean id="userService" class="com.example.service.impl.UserServiceImpl" />
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context.xsd">
+
     <bean id="userRepository" class="com.example.service.impl.UserRepositoryImpl" />
+
+    <!-- 1. 加载 jdbc.properties -->
+    <context:property-placeholder location="classpath:jdbc.properties"/>
+
+    <!-- 直接配置 HikariDataSource -->
+    <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/product_db"/>
+        <property name="username" value="root"/>
+        <property name="password" value="qq7816288"/>
+        <property name="driverClassName" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="maximumPoolSize" value="10"/>
+        <property name="minimumIdle" value="5"/>
+    </bean>
+
+    <!-- 3. 配置事务管理器（注入 dataSource） -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 4. 示例：配置一个需要事务的 Service -->
+    <bean id="userService" class="com.example.service.impl.UserServiceImpl">
+        <!--<property name="transactionManager" ref="transactionManager"/>-->
+        <!--<property name="transactionDefinition" ref="txDefinition"/>-->
+    </bean>
+
+    <!-- 定义事务属性 -->
+    <bean id="txDefinition" class="org.springframework.transaction.support.DefaultTransactionDefinition">
+        <property name="propagationBehavior" value="3"/> <!-- PROPAGATION_REQUIRES_NEW -->
+        <property name="isolationLevel" value="2"/>      <!-- ISOLATION_READ_COMMITTED -->
+    </bean>
 </beans>

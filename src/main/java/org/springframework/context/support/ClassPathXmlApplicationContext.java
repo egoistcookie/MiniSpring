@@ -76,4 +76,8 @@ public class ClassPathXmlApplicationContext {
     public Object getBean(String name) {
         return beanFactory.getBean(name);
     }
+
+    public void close() {
+
+    }
 }

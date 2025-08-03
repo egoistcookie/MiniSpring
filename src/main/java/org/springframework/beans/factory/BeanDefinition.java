@@ -1,15 +1,13 @@
 package org.springframework.beans.factory;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Bean定义类
  *
  * 该类用于封装Bean的元数据信息，包括Bean的类型、作用域等配置信息。
  * 它是Spring IoC容器中Bean配置信息的内部表示形式。
- *
- * 主要包含以下元数据：
- * 1. Bean的Class对象（用于实例化）
- * 2. Bean的作用域（singleton或prototype）
- * 3. 未来可扩展的其他配置信息
  */
 public class BeanDefinition {
 
@@ -26,6 +24,22 @@ public class BeanDefinition {
      * prototype: 每次请求都会创建一个新的实例
      */
     private String scope = "singleton"; // 默认单例
+
+    /**
+     * 构造函数参数值列表
+     */
+    private ConstructorArgumentValues constructorArgumentValues;
+
+    // 在 BeanDefinition.java 中添加
+    private final MutablePropertyValues propertyValues = new MutablePropertyValues();
+
+    public MutablePropertyValues getPropertyValues() {
+        return propertyValues;
+    }
+
+    public BeanDefinition() {
+        this.constructorArgumentValues = new ConstructorArgumentValues();
+    }
 
     /**
      * 获取Bean的Class对象
@@ -62,4 +76,85 @@ public class BeanDefinition {
     public void setScope(String scope) {
         this.scope = scope;
     }
+
+    /**
+     * 获取构造函数参数值
+     * @return 构造函数参数值列表
+     */
+    public ConstructorArgumentValues getConstructorArgumentValues() {
+        return constructorArgumentValues;
+    }
+
+    /**
+     * 设置构造函数参数值
+     * @param constructorArgumentValues 构造函数参数值列表
+     */
+    public void setConstructorArgumentValues(ConstructorArgumentValues constructorArgumentValues) {
+        this.constructorArgumentValues = constructorArgumentValues;
+    }
+
+    /**
+     * 判断是否有构造函数参数
+     * @return 如果有构造函数参数返回true，否则返回false
+     */
+    public boolean hasConstructorArgumentValues() {
+        return constructorArgumentValues != null && !constructorArgumentValues.isEmpty();
+    }
+
+    /**
+     * 构造函数参数值类
+     */
+    public static class ConstructorArgumentValues {
+        private List<ValueHolder> argumentValues = new ArrayList<>();
+
+        public void addGenericArgumentValue(Object value) {
+            argumentValues.add(new ValueHolder(value));
+        }
+
+        public List<ValueHolder> getGenericArgumentValues() {
+            return argumentValues;
+        }
+
+        public boolean isEmpty() {
+            return argumentValues.isEmpty();
+        }
+
+        /**
+         * 参数值持有者
+         */
+        public static class ValueHolder {
+            private Object value;
+            private String name;
+            private String type;
+
+            public ValueHolder(Object value) {
+                this.value = value;
+            }
+
+            public Object getValue() {
+                return value;
+            }
+
+            public void setValue(Object value) {
+                this.value = value;
+            }
+
+            public String getName() {
+                return name;
+            }
+
+            public void setName(String name) {
+                this.name = name;
+            }
+
+            public String getType() {
+                return type;
+            }
+
+            public void setType(String type) {
+                this.type = type;
+            }
+        }
+    }
 }
+

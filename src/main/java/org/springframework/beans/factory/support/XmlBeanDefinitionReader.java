@@ -1,6 +1,8 @@
 package org.springframework.beans.factory.support;
 
 import org.springframework.beans.factory.BeanDefinition;
+import org.springframework.beans.factory.PropertyValue;
+import org.springframework.beans.factory.RuntimeBeanReference;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -82,12 +84,127 @@ public class XmlBeanDefinitionReader {
                 // 创建BeanDefinition实例并设置相关属性
                 BeanDefinition beanDefinition = new BeanDefinition();
                 beanDefinition.setBeanClass(Class.forName(className));
+
+                // 解析构造函数参数
+                parseConstructorArgElements(element, beanDefinition);
+
+                // 解析属性元素
+                parsePropertyElements(element, beanDefinition);
+
                 // 将bean定义注册到bean工厂
                 beanFactory.registerBeanDefinition(id, beanDefinition);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException("Failed to load class: " + className, e);
             }
         }
+    }
+
+    /**
+     * 解析bean元素中的property子元素
+     *
+     * @param beanElement bean元素
+     * @param beanDefinition 对应的BeanDefinition
+     */
+    private void parsePropertyElements(Element beanElement, BeanDefinition beanDefinition) {
+        NodeList propertyNodes = beanElement.getElementsByTagName("property");
+
+        for (int i = 0; i < propertyNodes.getLength(); i++) {
+            Element propertyElement = (Element) propertyNodes.item(i);
+
+            String name = propertyElement.getAttribute("name");
+            Object value = parsePropertyElement(propertyElement);
+
+            beanDefinition.getPropertyValues().addPropertyValue(new PropertyValue(name, value));
+        }
+    }
+
+    /**
+     * 解析单个property元素
+     *
+     * @param propertyElement property元素
+     * @return 解析后的属性值
+     */
+    private Object parsePropertyElement(Element propertyElement) {
+        // 检查是否有ref属性（引用其他bean）
+        String ref = propertyElement.getAttribute("ref");
+        if (!ref.isEmpty()) {
+            return new RuntimeBeanReference(ref);
+        }
+
+        // 检查是否有value属性（字面量值）
+        String value = propertyElement.getAttribute("value");
+        if (!value.isEmpty()) {
+            return parseValue(value);
+        }
+
+        // 如果既没有ref也没有value，则抛出异常
+        throw new RuntimeException("property element must have either 'ref' or 'value' attribute");
+    }
+
+    /**
+     * 解析bean元素中的constructor-arg子元素
+     *
+     * @param beanElement bean元素
+     * @param beanDefinition 对应的BeanDefinition
+     */
+    private void parseConstructorArgElements(Element beanElement, BeanDefinition beanDefinition) {
+        NodeList constructorArgNodes = beanElement.getElementsByTagName("constructor-arg");
+
+        for (int i = 0; i < constructorArgNodes.getLength(); i++) {
+            Element constructorArgElement = (Element) constructorArgNodes.item(i);
+
+            // 解析constructor-arg元素
+            Object value = parseConstructorArgElement(constructorArgElement);
+
+            // 添加到BeanDefinition的构造函数参数列表中
+            beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(value);
+        }
+    }
+
+    /**
+     * 解析单个constructor-arg元素
+     *
+     * @param constructorArgElement constructor-arg元素
+     * @return 解析后的参数值
+     */
+    private Object parseConstructorArgElement(Element constructorArgElement) {
+        // 检查是否有ref属性（引用其他bean）
+        String ref = constructorArgElement.getAttribute("ref");
+        if (!ref.isEmpty()) {
+            return ref; // 返回bean名称，后续会解析为实际bean实例
+        }
+
+        // 检查是否有value属性（字面量值）
+        String value = constructorArgElement.getAttribute("value");
+        if (!value.isEmpty()) {
+            return parseValue(value); // 解析字面量值
+        }
+
+        // 如果既没有ref也没有value，则抛出异常
+        throw new RuntimeException("constructor-arg element must have either 'ref' or 'value' attribute");
+    }
+
+    /**
+     * 解析字面量值
+     *
+     * @param value 字符串形式的值
+     * @return 解析后的值（可能是Integer、Boolean等类型）
+     */
+    private Object parseValue(String value) {
+        // 尝试解析为整数
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            // 忽略，继续尝试其他类型
+        }
+
+        // 尝试解析为布尔值
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+            return Boolean.parseBoolean(value);
+        }
+
+        // 默认作为字符串处理
+        return value;
     }
 
 }
